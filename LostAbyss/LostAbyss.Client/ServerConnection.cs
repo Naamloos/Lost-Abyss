@@ -43,7 +43,7 @@ namespace LostAbyss.Client
                 default:
                     break;
                 case ServerStatusPacket packet:
-                    Console.WriteLine("Got server status.");
+                    Console.WriteLine($"Got server status. {packet.ServerName}, desc: {packet.ServerDesc}, players:{packet.OnlinePlayers}/{packet.MaxPlayers}");
                     break;
             }
 

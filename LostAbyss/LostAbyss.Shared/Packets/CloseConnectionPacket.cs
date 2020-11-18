@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace LostAbyss.Shared.Packets
 {
-    [Packet(0x02)]
+    [Packet(0x03)]
     public class CloseConnectionPacket : BasePacket
     {
         [Field(0)]

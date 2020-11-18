@@ -35,17 +35,17 @@ namespace LostAbyss.Shared
 
             while (!this._ct.IsCancellationRequested && this._tcp.Connected)
             {
-                
-                    var length = reader.ReadInt32();
 
-                    if (length > 0)
-                    {
-                        var id = reader.ReadByte();
-                        Console.WriteLine($"Read a packet with length {length}!");
-                        var data = reader.ReadBytes(length - 1);
+                var length = reader.ReadInt32();
 
-                        await this.handlePacketAsync(id, data);
-                    }
+                if (length > 0)
+                {
+                    var id = reader.ReadByte();
+                    Console.WriteLine($"Read a packet with length {length}!");
+                    var data = reader.ReadBytes(length - 1);
+
+                    await this.handlePacketAsync(id, data);
+                }
             }
 
             await Task.Yield();
@@ -70,14 +70,14 @@ namespace LostAbyss.Shared
         {
             var packets = this.GetType().Assembly.GetTypes()
                 .Where(x => x.IsAssignableTo(typeof(BasePacket)) && x.GetCustomAttribute<PacketAttribute>() != null);
-            if(packets.Count() > 0)
+            if (packets.Count() > 0)
             {
                 var packettype = packets.FirstOrDefault(x => x.GetCustomAttribute<PacketAttribute>().Id == id);
-                if(packettype != null)
+                if (packettype != null)
                 {
-                    var pack = (BasePacket)Activator.CreateInstance(packettype);
-                    pack.PopulateFromByteArray(data);
-                    await this.PacketReceivedAsync.Invoke(pack);
+                    var pack = Activator.CreateInstance(packettype);
+                    packettype.GetMethod("PopulateFromByteArray").Invoke(pack, new object[1] { data });
+                    await this.PacketReceivedAsync.Invoke((BasePacket)pack);
                 }
             }
         }

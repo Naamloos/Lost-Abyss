@@ -58,7 +58,7 @@ namespace LostAbyss.Shared.Packets
                     value = br.ReadBytes(length);
                 }
 
-                f.SetValue(this, null);
+                f.SetValue(this, value);
             }
         }
 
