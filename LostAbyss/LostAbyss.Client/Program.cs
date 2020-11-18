@@ -8,12 +8,18 @@ namespace LostAbyss.Client
     static class Program
     {
         [STAThread]
-        static void Main()
+        static async Task Main()
         {
-            Thread.Sleep(2000);
+            await Task.Delay(2000);
             Console.WriteLine("Cnnecting to server...");
             var conn = new ServerConnection(IPAddress.Parse("127.0.0.1"), 2344);
-            Task.WaitAll(conn.StartConnectionAsync());
+            _ = Task.Run(conn.StartConnectionAsync);
+
+            while(true)
+            {
+                await Task.Delay(5000);
+                await conn.RequestServerStatusAsync();
+            }
 
             //using (var game = new Game1())
             //    game.Run();

@@ -1,75 +1,68 @@
-﻿using LostAbyss.Shared.Packets;
+﻿using LostAbyss.Shared;
+using LostAbyss.Shared.Packets;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LostAbyss.Server
 {
     public class Client
     {
-        private TcpClient _tcp;
-        private bool _loggedin = false;
-        private Queue<Packet> _packetQueue = new Queue<Packet>();
+        private Connection _connection;
+        private CancellationTokenSource _cts;
 
         public Client(TcpClient tcp)
         {
-            this._tcp = tcp;
+            this._cts = new CancellationTokenSource();
+            this._connection = new Connection(tcp, _cts.Token);
+
+            this._connection.PacketReceivedAsync += HandlePacket;
         }
 
-        /// <summary>
-        /// Ticks client. Runs parallel from other clients.
-        /// </summary>
-        /// <returns></returns>
-        public async Task TickAsync()
+        private async Task HandlePacket(BasePacket p)
         {
-            var str = _tcp.GetStream();
-
-            if (_packetQueue.TryDequeue(out Packet packet))
+            switch(p)
             {
-                packet.WriteToStream(str);
-            }
-
-            var pack = Packet.ReadFromStream(str);
-            if (pack is not null)
-                HandlePacket(pack);
-
-
-            await Task.Yield();
-        }
-
-        public void EnqueuePacket(Packet packet)
-        {
-            this._packetQueue.Enqueue(packet);
-        }
-
-        public bool IsLoggedIn() => _loggedin;
-
-        private void HandlePacket(Packet p)
-        {
-            switch (p)
-            {
-                case ServerStatusPacket packet:
-                    Console.WriteLine($"For some weird reason client sent server status?");
+                default:
+                    Console.WriteLine("Forcibly closing a connection because an invalid packet was sent.");
+                    await this.DisconnectAsync("Invalid packet sent");
                     break;
 
                 case RequestServerStatusPacket packet:
-                    Console.WriteLine("Received server status request");
-                    this.EnqueuePacket(new ServerStatusPacket()
+                    Console.WriteLine("Got server status request.");
+                    await this._connection.WritePacketAsync(new ServerStatusPacket()
                     {
-                        ServerName = "InDev server",
-                        ServerDesc = "A server that is still in dev.",
+                        ServerName = "debug",
+                        ServerDesc = "a debug server",
                         MaxPlayers = 69,
                         OnlinePlayers = 0
                     });
                     break;
 
-                default:
-                    Console.WriteLine($"Read unknown or null packet.");
+                case CloseConnectionPacket packet:
+                    Console.WriteLine($"Closed a connection on request with reason: {packet.Reason}");
                     break;
             }
+        }
+
+        public async Task StartConnectionAsync()
+        {
+            await this._connection.StartClientLoopAsync();
+        }
+
+        public async Task DisconnectAsync(string reason)
+        {
+            await this._connection.WritePacketAsync(new CloseConnectionPacket()
+            {
+                Reason = reason
+            });
+            this._cts.Cancel();
         }
     }
 }

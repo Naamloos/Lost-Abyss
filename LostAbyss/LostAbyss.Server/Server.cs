@@ -29,9 +29,6 @@ namespace LostAbyss.Server
             // Start tcp listener
             this._tcp.Start();
 
-            // Start client tick loop
-            _ = Task.Run(this.StartTickLoop);
-
             // Run while not canceled
             while (!this._cts.IsCancellationRequested)
             {
@@ -42,28 +39,20 @@ namespace LostAbyss.Server
                 var client = new Client(tcpclient);
                 this._clients.Add(client);
 
+                _ = Task.Run(client.StartConnectionAsync);
+
                 // Accept new connection with 100ms delay
                 await Task.Delay(100);
             }
         }
 
-        private async Task StartTickLoop()
-        {
-            // Keep looping while not canceled
-            while (!_cts.IsCancellationRequested)
-            {
-                // Tick each client parallel
-                Parallel.ForEach(this._clients, async c =>
-                {
-                    await c.TickAsync();
-                });
-                await Task.Delay(50);
-            }
-        }
-
-        public void StopServer()
+        public async Task StopServer()
         {
             this._cts.Cancel();
+            foreach(var c in _clients)
+            {
+                await c.DisconnectAsync("Server shutting down.");
+            }
         }
     }
 }

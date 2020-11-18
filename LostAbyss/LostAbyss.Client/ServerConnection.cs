@@ -1,6 +1,8 @@
-﻿using LostAbyss.Shared.Packets;
+﻿using LostAbyss.Shared;
+using LostAbyss.Shared.Packets;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -12,51 +14,45 @@ namespace LostAbyss.Client
 {
     public class ServerConnection
     {
+        private Connection _connection;
+        private CancellationTokenSource _cts;
         private IPAddress _ip;
         private int _port;
-        private TcpClient _client;
-        private CancellationTokenSource _cts;
-        private ServerStatusPacket _status;
 
         public ServerConnection(IPAddress ip, int port)
         {
+            this._cts = new CancellationTokenSource();
             this._ip = ip;
             this._port = port;
-            this._cts = new CancellationTokenSource();
-            _client = new TcpClient();
         }
 
         public async Task StartConnectionAsync()
         {
-            _client.Connect(this._ip, this._port);
-            Console.WriteLine("Cnnected");
-            var str = _client.GetStream();
+            var tcp = new TcpClient();
+            tcp.Connect(_ip, _port);
 
-            Console.WriteLine("Requesting status");
-            new RequestServerStatusPacket().WriteToStream(str);
-
-            while (!_cts.IsCancellationRequested)
-            {
-                Console.WriteLine("Getting data");
-                var pack = Packet.ReadFromStream(str);
-                HandlePacket(pack);
-                await Task.Delay(50);
-            }
+            _connection = new Connection(tcp, _cts.Token);
+            _connection.PacketReceivedAsync += HandlePacket;
+            await this._connection.StartClientLoopAsync();
         }
 
-        private void HandlePacket(Packet p)
+        private async Task HandlePacket(BasePacket p)
         {
             switch (p)
             {
-                case ServerStatusPacket packet:
-                    Console.WriteLine("Received server status.");
-                    this._status = packet;
-                    break;
-
                 default:
-                    Console.WriteLine($"Received null / unknown packet.");
+                    break;
+                case ServerStatusPacket packet:
+                    Console.WriteLine("Got server status.");
                     break;
             }
+
+            await Task.Yield();
+        }
+
+        public async Task RequestServerStatusAsync()
+        {
+            await this._connection.WritePacketAsync(new RequestServerStatusPacket());
         }
     }
 }

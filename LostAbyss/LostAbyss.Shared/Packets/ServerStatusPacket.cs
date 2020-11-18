@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace LostAbyss.Shared.Packets
 {
     [Packet(0x01)]
-    public class ServerStatusPacket : Packet
+    public class ServerStatusPacket : BasePacket
     {
         [Field(0)]
         public string ServerName;

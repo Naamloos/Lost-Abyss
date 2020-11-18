@@ -8,8 +8,9 @@ using System.Threading.Tasks;
 namespace LostAbyss.Shared.Packets
 {
     [Packet(0x02)]
-    public class RequestServerStatusPacket : BasePacket
+    public class CloseConnectionPacket : BasePacket
     {
-        // No data, just a request
+        [Field(0)]
+        public string Reason;
     }
 }
